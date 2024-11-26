@@ -12,9 +12,12 @@
 -- Comment for golang projects
 vim.o.expandtab = false
 
+
 lvim.format_on_save = true
 vim.wo.relativenumber = true
 -- xnoremap("<leader>p", "\"_dP")
+lvim.keys.normal_mode["|"] = ":vsplit<CR>"
+lvim.keys.normal_mode["-"] = ":split<CR>"
 
 
 -- local linters = require "lvim.lsp.null-ls.linters"
@@ -76,7 +79,7 @@ lvim.plugins = {
 		"leoluz/nvim-dap-go",
 		ft = "go",
 		dependencies = "mfussenegger/nvim-dap",
-		-- config = SetupDapGo(),
+		config = SetupDapGo(),
 	},
 	{
 		"scalameta/nvim-metals",
@@ -112,11 +115,45 @@ lvim.plugins = {
 	{
 		"mxsdev/nvim-dap-vscode-js",
 		dependencies = "mfussenegger/nvim-dap",
-	}
+		config = function()
+			require("dap-vscode-js").setup({
+				debugger_path     = '/home/amirphl/vscode-js-debug',
+				-- debugger_path     = '/home/amirphl/.vscode-oss/extensions/kylinideteam.js-debug-0.1.3-universal',
+				-- debugger_path     = vim.fn.stdpath('data') .. '/mason/packages/js-debug-adapter',
+				-- debugger_cmd      = { 'js-debug-adapter' },
+				adapters          = { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' },
+				log_file_path     = "/home/amirphl/vscode-js-debug/dap_vscode_js_for_amirphl.log",
+				log_file_level    = vim.log.levels.DEBUG,
+				log_console_level = vim.log.levels.DEBUG
+			})
+		end
+	},
 	-- {
 	--   'sourcegraph/sg.nvim',
 	--   build = 'nvim -l build/init.lua'
 	-- }
+	-- {
+	-- 	"Pocco81/auto-save.nvim",
+	-- 	config = function()
+	-- 		require("auto-save").setup()
+	-- 	end,
+	-- },
+	{
+		'Exafunction/codeium.vim',
+		-- export no_proxy="localhost,127.0.0.1"
+		-- https://github.com/Exafunction/codeium.nvim/issues/232
+		-- https://www.youtube.com/watch?v=Ul_WPhS2bis
+		-- https://github.com/mxsdev/nvim-dap-vscode-js
+		-- https://github.com/microsoft/vscode-js-debug
+		-- https://github.com/Microsoft/vscode/issues/21620
+		-- https://github.com/mxsdev/nvim-dap-vscode-js/issues/63
+		-- https://github.com/Exafunction/codeium.vim
+		-- ** https://github.com/Exafunction/codeium.vim/issues/195
+		event = 'BufEnter',
+		config = function()
+			vim.keymap.set('i', '<C-g>', function() return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
+		end
+	}
 }
 
 lvim.builtin.telescope.pickers = {
@@ -309,11 +346,31 @@ dap.adapters.delve = {
 dap.configurations.go = {
 	{
 		type = "delve",
-		name = "Debug",
+		name = "Debug MMS",
 		request = "launch",
 		-- program = "${file}"
-		program = "/home/amirphl/user-management/cmd/http/"
-		-- program = "/home/amirphl/user-management/cmd/grpc/main.go"
+		program = "/home/amirphl/mms/cmd/executor/"
+	},
+	{
+		type = "delve",
+		name = "Debug UserManagement",
+		request = "launch",
+		-- program = "${file}"
+		program = "/home/amirphl/user-management/cmd/executor/"
+	},
+	{
+		type = "delve",
+		name = "Debug UMS",
+		request = "launch",
+		-- program = "${file}"
+		program = "/home/amirphl/ums/cmd/executor/"
+	},
+	{
+		type = "delve",
+		name = "Debug Notification",
+		request = "launch",
+		-- program = "${file}"
+		program = "/home/amirphl/notification/cmd/executor"
 	},
 	{
 		type = "delve",
@@ -332,113 +389,70 @@ dap.configurations.go = {
 	}
 }
 
-
--- setup adapters
-local dapVscodeJs = require("dap-vscode-js")
-dapVscodeJs.setup({
-	debugger_path = vim.fn.stdpath('data') .. '/mason/packages/js-debug-adapter',
-	debugger_cmd = { 'js-debug-adapter' },
-	adapters = { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' },
-})
-
--- custom adapter for running tasks before starting debug
-local custom_adapter = 'pwa-node-custom'
-dap.adapters[custom_adapter] = function(cb, config)
-	if config.preLaunchTask then
-		local async = require('plenary.async')
-		local notify = require('notify').async
-
-		async.run(function()
-			---@diagnostic disable-next-line: missing-parameter
-			notify('Running [' .. config.preLaunchTask .. ']').events.close()
-		end, function()
-			vim.fn.system(config.preLaunchTask)
-			config.type = 'pwa-node'
-			dap.run(config)
-		end)
-	end
-end
-
+-- https://github.com/anasrar/.dotfiles/blob/4c444c3ab2986db6ca7e2a47068222e47fd232e2/neovim/.config/nvim/lua/rin/DAP/languages/typescript.lua
 -- language config
+--
 for _, language in ipairs({ 'typescript', 'javascript' }) do
 	dap.configurations[language] = {
 		{
-			name       = 'Launch',
+			type                      = 'pwa-node',
+			request                   = 'launch',
+			name                      = 'dev debug',
+			-- program           = '${file}',
+			rootPath                  = '${workspaceFolder}',
+			cwd                       = '${workspaceFolder}',
+			-- cwd        = vim.fn.getcwd(),
+			-- runtimeExecutable = 'APP_ENV_MODE=DEV nest', -- TODO
+			runtimeExecutable         = 'nest',
+			runtimeArgs               = { 'start', '--watch' },
+			stopOnEntry               = false,
+			sourceMaps                = true,
+			outFiles                  = { "${workspaceFolder}/**/**/*", "!**/node_modules/**" },
+			skipFiles                 = { '<node_internals>/**', 'node_modules/**' },
+			resolveSourceMapLocations = {
+				"${workspaceFolder}/**",
+				"!**/node_modules/**",
+			},
+			protocol                  = 'inspector',
+			console                   = 'integratedTerminal',
+			-- args                      = { "${file}" },
+		},
+		{
+			type                      = 'pwa-node',
+			request                   = 'launch',
+			name                      = 'debug prod',
+			-- program           = '${file}',
+			rootPath                  = '${workspaceFolder}',
+			cwd                       = '${workspaceFolder}',
+			-- cwd        = vim.fn.getcwd(),
+			-- runtimeExecutable         = 'APP_ENV_MODE=PROD node', -- TODO
+			runtimeExecutable         = 'node',
+			runtimeArgs               = { '-r', 'source-map-support/register', 'dist/main' },
+			stopOnEntry               = false,
+			sourceMaps                = true,
+			outFiles                  = { "${workspaceFolder}/**/**/*", "!**/node_modules/**" },
+			skipFiles                 = { '<node_internals>/**', 'node_modules/**' },
+			resolveSourceMapLocations = {
+				"${workspaceFolder}/**",
+				"!**/node_modules/**",
+			},
+			protocol                  = 'inspector',
+			console                   = 'integratedTerminal',
+			-- args                      = { "${file}" },
+		},
+		{
 			type       = 'pwa-node',
-			request    = 'launch',
-			program    = '${file}',
+			request    = 'attach',
+			name       = 'Attach Program',
 			rootPath   = '${workspaceFolder}',
 			cwd        = '${workspaceFolder}',
+			host       = 'localhost',
+			port       = 9229,
 			sourceMaps = true,
 			skipFiles  = { '<node_internals>/**', 'node_modules/**' },
-			protocol   = 'inspector',
+			processId  = 842142,
+			-- processId  = require('dap.utils').pick_process,
 			console    = 'integratedTerminal',
-			-- runtimeArgs = {
-			-- 	"--loader",
-			-- 	"ts-node/esm"
-			-- },
-			-- runtimeExecutable = 'node',
-			-- args = {
-			-- 	"${file}"
-			-- },
-			-- resolveSourceMapLocations = {
-			-- 	"${workspaceFolder}/**",
-			-- 	"!**/node_modules/**"
-			-- },
-		},
-		{
-			name      = 'Attach to node process',
-			type      = 'pwa-node',
-			request   = 'attach',
-			rootPath  = '${workspaceFolder}',
-			processId = require('dap.utils').pick_process,
-			cwd       = '${workspaceFolder}',
-			-- sourceMaps = true,
-		},
-		{
-			name = 'Debug Main Process (Electron)',
-			type = 'pwa-node',
-			request = 'launch',
-			program = '${workspaceFolder}/node_modules/.bin/electron',
-			args = {
-				'${workspaceFolder}/dist/index.js',
-			},
-			outFiles = {
-				'${workspaceFolder}/dist/*.js',
-			},
-			resolveSourceMapLocations = {
-				'${workspaceFolder}/dist/**/*.js',
-				'${workspaceFolder}/dist/*.js',
-			},
-			rootPath = '${workspaceFolder}',
-			cwd = '${workspaceFolder}',
-			sourceMaps = true,
-			skipFiles = { '<node_internals>/**' },
-			protocol = 'inspector',
-			console = 'integratedTerminal',
-		},
-		{
-			name = 'Compile & Debug Main Process (Electron)',
-			type = custom_adapter,
-			request = 'launch',
-			preLaunchTask = 'npm run build-ts',
-			program = '${workspaceFolder}/node_modules/.bin/electron',
-			args = {
-				'${workspaceFolder}/dist/index.js',
-			},
-			outFiles = {
-				'${workspaceFolder}/dist/*.js',
-			},
-			resolveSourceMapLocations = {
-				'${workspaceFolder}/dist/**/*.js',
-				'${workspaceFolder}/dist/*.js',
-			},
-			rootPath = '${workspaceFolder}',
-			cwd = '${workspaceFolder}',
-			sourceMaps = true,
-			skipFiles = { '<node_internals>/**' },
-			protocol = 'inspector',
-			console = 'integratedTerminal',
 		},
 	}
 end

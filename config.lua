@@ -153,6 +153,12 @@ lvim.plugins = {
 		config = function()
 			vim.keymap.set('i', '<C-g>', function() return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
 		end
+	},
+	{
+		"folke/todo-comments.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		opts = {
+		}
 	}
 }
 
@@ -170,6 +176,12 @@ lvim.builtin.telescope.pickers = {
 		},
 	},
 }
+
+vim.api.nvim_set_keymap("n", "<leader>d", '"_d', { noremap = true, silent = true })
+vim.api.nvim_set_keymap("v", "<leader>d", '"_d', { noremap = true, silent = true })
+vim.api.nvim_set_keymap("v", "<leader>p", '"_dP', { noremap = true, silent = true })
+vim.api.nvim_set_keymap("x", "p", "P", { noremap = true, silent = true })
+
 
 lvim.keys.normal_mode["go"] = "<cmd>lua require('metals').organize_imports()<cr>"
 lvim.keys.normal_mode["gws"] = "<cmd>lua require('telescope.builtin').lsp_dynamic_workspace_symbols()<cr>"
@@ -291,7 +303,7 @@ dap.adapters.cppdbg = {
 	id = 'cppdbg',
 	type = 'executable',
 	-- command = '/home/amirphl/Downloads/cpptools-linux/extension/debugAdapters/bin/OpenDebugAD7',
-	command = '/home/amirphl/.vscode/extensions/ms-vscode.cpptools-1.20.5/debugAdapters/bin/OpenDebugAD7'
+	command = '/home/amirphl/.vscode/extensions/ms-vscode.cpptools-1.22.11-linux-x64/debugAdapters/bin/OpenDebugAD7'
 }
 dap.configurations.cpp = {
 	{
@@ -386,7 +398,21 @@ dap.configurations.go = {
 		request = "launch",
 		mode = "test",
 		program = "./${relativeFileDirname}"
-	}
+	},
+	{
+		type = "delve",
+		name = "Debug TMS",
+		request = "launch",
+		-- program = "${file}"
+		program = "/home/amirphl/tms/cmd/executor/"
+	},
+	{
+		type = "delve",
+		name = "Debug OMS",
+		request = "launch",
+		-- program = "${file}"
+		program = "/home/amirphl/oms/cmd/executor/"
+	},
 }
 
 -- https://github.com/anasrar/.dotfiles/blob/4c444c3ab2986db6ca7e2a47068222e47fd232e2/neovim/.config/nvim/lua/rin/DAP/languages/typescript.lua
